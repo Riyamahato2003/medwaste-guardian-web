@@ -1,190 +1,116 @@
 
 import React, { useState } from 'react';
-import { toast } from 'sonner';
-import InputPanel from '../components/InputPanel';
+import LogoDisplay from '../components/LogoDisplay';
+import { Mic, Upload, Send } from 'lucide-react';
 
 const Home = () => {
-  const [result, setResult] = useState<string | null>(null);
+  const [inputText, setInputText] = useState('');
+  const [responseText, setResponseText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleTextSubmit = async (text: string) => {
+  const handleTextSubmit = async (e) => {
+    e.preventDefault();
+    if (!inputText.trim()) return;
+    
     setIsLoading(true);
-    setResult(null);
+    setResponseText('Processing your query...');
     
     try {
-      const response = await fetch("/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: text })
-      });
-      
-      const data = await response.json();
-      
-      if (data.response) {
-        setResult(data.response);
-      } else {
-        throw new Error(data.error || "No response received");
-      }
-    } catch (err) {
-      console.error("Text error:", err);
-      toast.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
-      setResult("Sorry, there was an error processing your request. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleImageUpload = async (file: File) => {
-    setIsLoading(true);
-    setResult(null);
-    
-    try {
-      const formData = new FormData();
-      formData.append("image", file);
-      
-      const imageResponse = await fetch("/predict/image", {
-        method: "POST",
-        body: formData
-      });
-      
-      const imageData = await imageResponse.json();
-      
-      if (imageData.classification) {
-        const imageDesc = `Image classification result: ${JSON.stringify(imageData.classification)}`;
-        
-        const llmResponse = await fetch("/query", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: imageDesc })
-        });
-        
-        const llmData = await llmResponse.json();
-        
-        if (llmData.response) {
-          setResult(llmData.response);
-        } else {
-          throw new Error(llmData.error || "No guidance received");
-        }
-      } else {
-        throw new Error(imageData.error || "No classification result");
-      }
-    } catch (err) {
-      console.error("Image error:", err);
-      toast.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
-      setResult("Sorry, there was an error processing your image. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleStartRecording = async () => {
-    setIsLoading(true);
-    setResult(null);
-    
-    try {
-      toast.info("Recording started...");
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
-      const audioChunks: BlobPart[] = [];
-      
-      mediaRecorder.ondataavailable = (event) => {
-        audioChunks.push(event.data);
-      };
-      
-      mediaRecorder.onstop = async () => {
-        try {
-          const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-          const formData = new FormData();
-          formData.append("audio", audioBlob, "recorded_audio.webm");
-          
-          const speechResponse = await fetch("/predict/speech", {
-            method: "POST",
-            body: formData
-          });
-          
-          const speechData = await speechResponse.json();
-          
-          if (speechData.response) {
-            toast.success("Speech recognized!");
-            
-            const llmResponse = await fetch("/query", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ query: speechData.response })
-            });
-            
-            const llmData = await llmResponse.json();
-            
-            if (llmData.response) {
-              setResult(llmData.response);
-            } else {
-              throw new Error(llmData.error || "No guidance received");
-            }
-          } else {
-            throw new Error(speechData.error || "Speech recognition failed");
-          }
-        } catch (err) {
-          console.error("Speech processing error:", err);
-          toast.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
-          setResult("Sorry, there was an error processing your speech. Please try again.");
-        } finally {
-          setIsLoading(false);
-          stream.getTracks().forEach(track => track.stop());
-        }
-      };
-      
-      mediaRecorder.start();
-      
+      // Simulating API call
       setTimeout(() => {
-        if (mediaRecorder.state !== "inactive") {
-          mediaRecorder.stop();
-        }
-      }, 5000);
+        setResponseText(`Here's guidance for disposing: ${inputText}`);
+        setIsLoading(false);
+      }, 1500);
       
-    } catch (err) {
-      console.error("Recording error:", err);
-      toast.error(`Error accessing microphone: ${err instanceof Error ? err.message : String(err)}`);
-      setResult("Sorry, there was an error accessing your microphone. Please ensure microphone permissions are enabled and try again.");
+      // In a real scenario, you would use the API:
+      // const response = await fetch('/query', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ query: inputText })
+      // });
+      // const data = await response.json();
+      // setResponseText(data.response);
+    } catch (error) {
+      console.error('Error:', error);
+      setResponseText('Sorry, an error occurred. Please try again.');
+    } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSpeechInput = () => {
+    setResponseText('Speech recognition activated. Speak now...');
+    // Speech recognition logic would go here
+  };
+
+  const handleImageUpload = () => {
+    document.getElementById('imageInput')?.click();
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-12 px-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
-            MedWaste <span className="text-medical-primary">Guardian</span>
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            AI-powered assistant for safe and correct disposal of biomedical waste.
-          </p>
-        </div>
-        
-        <div className="mb-12">
-          <InputPanel 
-            onTextSubmit={handleTextSubmit}
-            onImageUpload={handleImageUpload}
-            onStartRecording={handleStartRecording}
-          />
-        </div>
-        
-        {isLoading && (
-          <div className="medical-card animate-pulse-gentle max-w-3xl mx-auto my-8">
-            <div className="h-6 bg-gray-200 rounded-full w-3/4 mx-auto mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded-full w-full mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded-full w-full mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded-full w-2/3"></div>
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <section className="text-center mb-16">
+        <LogoDisplay size={140} className="mx-auto mb-8" />
+        <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          AI Medical Waste Disposal Assistant
+        </h1>
+        <p className="max-w-2xl mx-auto text-gray-600">
+          Get instant guidance on how to properly dispose of medical waste. 
+          Simply speak, type, or upload an image of the waste item.
+        </p>
+      </section>
+
+      <div className="max-w-3xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          {/* Speech Input */}
+          <button
+            onClick={handleSpeechInput}
+            className="input-card md:min-h-44"
+          >
+            <Mic size={32} className="text-medical-primary mb-2" />
+            <span className="font-medium">Speak Waste Type</span>
+            <p className="text-xs text-gray-500">Click to start speaking</p>
+          </button>
+
+          {/* Text Input */}
+          <form onSubmit={handleTextSubmit} className="input-card md:min-h-44">
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder="Type item name here..."
+              className="medical-input w-full"
+            />
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="medical-button bg-medical-primary text-white w-full flex items-center justify-center"
+            >
+              <Send size={16} className="mr-2" />
+              Submit
+            </button>
+          </form>
+
+          {/* Image Upload */}
+          <div className="input-card md:min-h-44" onClick={handleImageUpload}>
+            <Upload size={32} className="text-medical-primary mb-2" />
+            <span className="font-medium">Upload Waste Image</span>
+            <p className="text-xs text-gray-500">Click to select an image</p>
+            <input
+              id="imageInput"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={() => setResponseText('Image uploaded. Processing...')}
+            />
           </div>
-        )}
-        
-        {result && !isLoading && (
-          <div className="medical-card max-w-3xl mx-auto my-8 animate-fade-in">
-            <h3 className="text-xl font-medium text-gray-800 mb-4">Waste Disposal Guidance</h3>
-            <div className="bg-medical-accent/30 p-4 rounded-lg">
-              <p className="text-gray-700 whitespace-pre-line">{result}</p>
-            </div>
+        </div>
+
+        {/* Response Area */}
+        {responseText && (
+          <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 mt-8">
+            <h3 className="font-semibold text-gray-900 mb-2">AI Assistant Response:</h3>
+            <p className="text-gray-700">{responseText}</p>
           </div>
         )}
       </div>
